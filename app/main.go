@@ -4,6 +4,7 @@ import (
 	"fmt"
 	"net"
 	"os"
+	"strings"
 )
 
 // Ensures gofmt doesn't remove the "net" and "os" imports above (feel free to remove this!)
@@ -22,9 +23,34 @@ func main() {
 		os.Exit(1)
 	}
 
-	_, err = l.Accept()
+	conn, err := l.Accept()
 	if err != nil {
 		fmt.Println("error accepting connection: ", err.Error())
+		os.Exit(1)
+	}
+
+	httpVersion := "HTTP/1.1"
+	statusCode := "200"
+	reasonPhrase := "OK"
+	crlf := "\r\n"
+
+	statusLine := fmt.Sprintf("%s %s %s", httpVersion, statusCode, reasonPhrase)
+
+	headers := []string{}
+
+	var sb strings.Builder
+	sb.WriteString(statusLine)
+	sb.WriteString(crlf)
+	for _, header := range headers {
+		sb.WriteString(header)
+		sb.WriteString(crlf)
+	}
+
+	resp := sb.String()
+
+	_, err = conn.Write([]byte(resp))
+	if err != nil {
+		fmt.Println("failed to write to connection: %w", err)
 		os.Exit(1)
 	}
 }
