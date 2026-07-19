@@ -45,6 +45,7 @@ func main() {
 		sb.WriteString(header)
 		sb.WriteString(crlf)
 	}
+	sb.WriteString(crlf)
 
 	resp := sb.String()
 
