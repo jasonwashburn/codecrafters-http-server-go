@@ -1,6 +1,7 @@
 package main
 
 import (
+	"bufio"
 	"fmt"
 	"net"
 	"os"
@@ -12,6 +13,22 @@ var (
 	_ = net.Listen
 	_ = os.Exit
 )
+
+const (
+	CRLF = "\r\n"
+)
+
+type httpRequest struct {
+	method      string
+	target      string
+	httpVersion string
+}
+
+type httpResponse struct {
+	httpVersion  string
+	statusCode   string
+	reasonPhrase string
+}
 
 func main() {
 	// You can use print statements as follows for debugging, they'll be visible when running tests.
@@ -29,27 +46,54 @@ func main() {
 		os.Exit(1)
 	}
 
-	httpVersion := "HTTP/1.1"
-	statusCode := "200"
-	reasonPhrase := "OK"
-	crlf := "\r\n"
+	// request phase
+	reader := bufio.NewReader(conn)
 
-	statusLine := fmt.Sprintf("%s %s %s", httpVersion, statusCode, reasonPhrase)
+	requestLine, err := reader.ReadString('\n')
+	if err != nil {
+		fmt.Println("requestLine does not end in crlf: ", requestLine)
+		os.Exit(1)
+	}
+	requestLine = strings.TrimSpace(requestLine)
+	requestParts := strings.Split(requestLine, " ")
+	if len(requestParts) != 3 {
+		fmt.Println("request line does not contain exactly 3 parts: ", requestLine)
+	}
+
+	req := httpRequest{
+		method:      requestParts[0],
+		target:      requestParts[1],
+		httpVersion: requestParts[2],
+	}
+
+	// response phase
+	resp := httpResponse{}
+
+	if req.target == "/" {
+		resp.httpVersion = "HTTP/1.1"
+		resp.statusCode = "200"
+		resp.reasonPhrase = "OK"
+	} else {
+		resp.httpVersion = "HTTP/1.1"
+		resp.statusCode = "404"
+		resp.reasonPhrase = "Not Found"
+	}
+
+	statusLine := fmt.Sprintf("%s %s %s", resp.httpVersion, resp.statusCode, resp.reasonPhrase)
 
 	headers := []string{}
-
 	var sb strings.Builder
 	sb.WriteString(statusLine)
-	sb.WriteString(crlf)
+	sb.WriteString(CRLF)
 	for _, header := range headers {
 		sb.WriteString(header)
-		sb.WriteString(crlf)
+		sb.WriteString(CRLF)
 	}
-	sb.WriteString(crlf)
+	sb.WriteString(CRLF)
 
-	resp := sb.String()
+	craftedResponse := sb.String()
 
-	_, err = conn.Write([]byte(resp))
+	_, err = conn.Write([]byte(craftedResponse))
 	if err != nil {
 		fmt.Println("failed to write to connection: %w", err)
 		os.Exit(1)
